@@ -1,0 +1,5 @@
+reference/
+__pycache__/
+*.so
+result.json
+*.log

@@ -1,0 +1,202 @@
+{
+  "config": {
+    "engram_layer_ids": [
+      1,
+      14
+    ],
+    "engram_num_embeddings": [
+      384006168,
+      384016682
+    ],
+    "engram_max_ngram_size": 4,
+    "engram_vocab_size": 16000000,
+    "engram_n_heads": 8,
+    "engram_head_dim": 256,
+    "engram_pad_token_id": 2,
+    "engram_compressed_vocab_size": 99092
+  },
+  "tokens": [
+    [
+      0,
+      17,
+      250,
+      250,
+      70001,
+      129279,
+      1,
+      2
+    ],
+    [
+      2,
+      999,
+      45000,
+      7,
+      7,
+      123456,
+      128799,
+      17
+    ]
+  ],
+  "mask": [
+    [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+    ],
+    [
+      1,
+      1,
+      1,
+      0,
+      1,
+      1,
+      1,
+      1
+    ]
+  ],
+  "fixture_rows": 720,
+  "ddr_bytes": 184320,
+  "scale_hbm_bytes": 2880,
+  "scale_format": "synthetic FP32 per row; dequant=int8*scale",
+  "fixture": "sparse physical rows keyed by exact official logical hash; not checkpoint weights",
+  "official_chunk_consistency": true,
+  "reference_sha256": {
+    "tokenizer_config.json": "6ac8c8dc065ed118161d02dd532749ae3f52c243deac27872134fae2f50d8547",
+    "engram.py": "11f35ecbead8150c35aa002b3d180ef290b05a25afe883a11884f94d476d3897",
+    "config.json": "8be45ce0476004a3f529fd896115a4a2e800a129ad2d3ec05b16050f52e21879",
+    "tokenizer.json": "c90dfa01249db1be4245780a052ede752e1361c612ac6d08e2bdada7d599476b"
+  },
+  "sample_hashes": [
+    [
+      5702652,
+      24393184,
+      39183301,
+      61503783,
+      78984481,
+      90144770,
+      103724983,
+      121476532,
+      131476717,
+      152385926,
+      164143652,
+      191599181,
+      198145581,
+      217419202,
+      238329687,
+      247482304,
+      257520185,
+      283540304,
+      288689443,
+      315264704,
+      322314652,
+      348890037,
+      367865216,
+      380066193
+    ],
+    [
+      14361964,
+      29977809,
+      32716444,
+      61209771,
+      67456205,
+      84275051,
+      108494439,
+      120604547,
+      132225184,
+      150270452,
+      174805952,
+      178895254,
+      193207923,
+      211610196,
+      226280582,
+      252505246,
+      261362261,
+      279862797,
+      301364059,
+      312864848,
+      328367036,
+      349372619,
+      363873742,
+      372375971
+    ]
+  ],
+  "results": [
+    {
+      "pass_id": 0,
+      "start": 0,
+      "count": 8,
+      "hash_mismatches": 0,
+      "int8_mismatches": 0,
+      "dequant_mismatches": 0,
+      "max_abs_error": 0.0
+    },
+    {
+      "pass_id": 0,
+      "start": 0,
+      "count": 3,
+      "hash_mismatches": 0,
+      "int8_mismatches": 0,
+      "dequant_mismatches": 0,
+      "max_abs_error": 0.0
+    },
+    {
+      "pass_id": 0,
+      "start": 3,
+      "count": 4,
+      "hash_mismatches": 0,
+      "int8_mismatches": 0,
+      "dequant_mismatches": 0,
+      "max_abs_error": 0.0
+    },
+    {
+      "pass_id": 0,
+      "start": 7,
+      "count": 1,
+      "hash_mismatches": 0,
+      "int8_mismatches": 0,
+      "dequant_mismatches": 0,
+      "max_abs_error": 0.0
+    },
+    {
+      "pass_id": 1,
+      "start": 0,
+      "count": 8,
+      "hash_mismatches": 0,
+      "int8_mismatches": 0,
+      "dequant_mismatches": 0,
+      "max_abs_error": 0.0
+    },
+    {
+      "pass_id": 1,
+      "start": 0,
+      "count": 3,
+      "hash_mismatches": 0,
+      "int8_mismatches": 0,
+      "dequant_mismatches": 0,
+      "max_abs_error": 0.0
+    },
+    {
+      "pass_id": 1,
+      "start": 3,
+      "count": 4,
+      "hash_mismatches": 0,
+      "int8_mismatches": 0,
+      "dequant_mismatches": 0,
+      "max_abs_error": 0.0
+    },
+    {
+      "pass_id": 1,
+      "start": 7,
+      "count": 1,
+      "hash_mismatches": 0,
+      "int8_mismatches": 0,
+      "dequant_mismatches": 0,
+      "max_abs_error": 0.0
+    }
+  ]
+}
