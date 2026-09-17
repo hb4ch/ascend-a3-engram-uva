@@ -10,7 +10,7 @@ for c in D['cases']:
   assert all(abs(t['total']-sum(t['components'].values()))<.01 for t in p['traces'])
 s=(r/'e2e-report-template.html').read_text(encoding='utf-8-sig')
 s=s.replace("const keys=['ascendc_uva','triton_uva','cpu_stage','cpu_dequant'];", "const keys=['pipeline_uva','serial_tiled_uva','pipeline16_uva','triton_uva','ascendc_uva','cpu_stage','cpu_dequant'];")
-s=re.sub(r'const labels=.*?;',"const labels=['流水 8 行','分块串行 8 行','流水 16 行','上游 Triton','原始 Ascend C','CPU 收集 / NPU 解量化','CPU 收集 / CPU 解量化'];",s)
+s=re.sub(r'const labels=.*?;',"const labels=['③ UVA 流水8','③ UVA 串行8','③ UVA 流水16','③ Triton UVA','③ 原始 Ascend C','① CPU查表·NPU反量化','② CPU查表·CPU反量化'];",s)
 s=re.sub(r'const colors=.*?;',"const colors=['#007e87','#a67c00','#6454b9','#df5656','#8c99a6','#68a33d','#bd6c99'];",s)
 s=s.replace('D.cases.length*4','D.cases.length*keys.length')
 s=re.sub(r'<p class="note warning">.*?</p>', '<p class="note warning"><strong>调用顺序已修正：</strong>旧 ctypes 调用缓存 ACL stream，绕过了 PyTorch 尚未提交的主机任务。本次每次 raw kernel 发射前重新取得当前 stream，保留任务队列；114 个边界组合通过，完整真实权重每个计时样本之后逐元素校验。此前 757 个元素异常尚不能单凭此认定为同一根因。旧版报告的计时不与本轮混用。</p>',s,count=1)
