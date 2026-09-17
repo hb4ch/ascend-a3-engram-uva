@@ -1,0 +1,16 @@
+{
+  "upstream_vllm_ascend_commit": "258a5bdf65b5b026d5e1e9a46e0d6396454272a7",
+  "official_hf_revision": "dba1be0a40aa45a94ad051997016db3960a90277",
+  "source_sha256": {
+    "bench_pipeline_e2e.py": "2f96da56f1525423600dd615699a4230b7c578e3401dea5aa7a61d1b0a86c86a",
+    "bench_support.py": "dd145f3dc525b7a6ef1b9291d638275d435b9b025172a6a1e5f03599fb628c8e",
+    "download_triton.py": "6c77665fc3b91b02b6c008cb3b46baeeda0e490579020c0834316f1776e27b45",
+    "extract.py": "a95468e8d4bda84da83923d763210da6751b870f9d585c464dd20d05efdb937e",
+    "gather.asc": "7c13037def1a23795cbaf5064b422135c71456a655415b094a40fdcf380add3f",
+    "gather_pipeline.asc": "d835e46e832f531e03dc5bf01088e4a416261683f98ab5a5a17884010cce23a0",
+    "hash_e2e.asc": "7117f50eb0d86d9f38cdbbe4e6540faa932317a8ec1ee75ad5d072f40e0239c2",
+    "make_pipeline_report.py": "8abfe0fa9c96213fe77795bb867a35d2597c5b1a5d404634dd95f6fc87d43040",
+    "test_pipeline_fresh_stream.py": "2559332dd97fc2f11d103e4532eb52ef286980f01f712b0960054b956cf4f314"
+  },
+  "note": "bench_support reference directory adapted for repository layout; kernel and benchmark measurement logic unchanged from measured run."
+}

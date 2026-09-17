@@ -1,0 +1,32 @@
+{
+  "engram_embed_weight_l1.safetensors": {
+    "size": 98305579120,
+    "sha256": "51d28f161232e3bf600b92ef4e3c38ceb9164b801bd456503bb1a29da496ea9f",
+    "mtime_ns": 1789438875881196219
+  },
+  "config.json": {
+    "size": 3395,
+    "sha256": "1b2ed579c6a221f68f49222d470dab2068b23a3efc17d969b7a909e684e06316",
+    "mtime_ns": 1789436196882110076
+  },
+  "engram_embed_scale_l1.safetensors": {
+    "size": 12288197488,
+    "sha256": "b0b23e66bbd68a6df23e11b7de709ca8cc08562eecabd31134fb775c705eeb20",
+    "mtime_ns": 1789389858070570472
+  },
+  "engram_embed_scale_l14.safetensors": {
+    "size": 12288533936,
+    "sha256": "9caaea34100a866989b66d1f0e059447e34ff5ff8e50148e7dc9250e92dbf63c",
+    "mtime_ns": 1789389853099596678
+  },
+  "engram_embed_weight_l14.safetensors": {
+    "size": 98308270704,
+    "sha256": "bee6e08838c75d40c4b1f5f8d7e4716aba34f90c03c17e77ad406e36188cccaa",
+    "mtime_ns": 1789396671868424243
+  },
+  "tokenizer.json": {
+    "size": 6367257,
+    "sha256": "c90dfa01249db1be4245780a052ede752e1361c612ac6d08e2bdada7d599476b",
+    "mtime_ns": 1789436296095894334
+  }
+}

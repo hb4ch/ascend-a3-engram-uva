@@ -1,0 +1,13 @@
+{
+  "first_attempt_failure": {
+    "batch": 512,
+    "sequence": 1,
+    "path": "ascendc_uva",
+    "mismatches": 757,
+    "max_abs_error": 5.125,
+    "log": "e2e-first-failure.log"
+  },
+  "rerun": "All 44 groups passed; only diagnostic logging/readback added, no compute algorithm fix",
+  "status": "unresolved_not_reproduced",
+  "standalone_hash": "All 11 shapes passed three repetitions"
+}

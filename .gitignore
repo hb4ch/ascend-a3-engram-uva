@@ -3,3 +3,5 @@ __pycache__/
 *.so
 result.json
 *.log
+benchmark/upstream_engram_int8.py
+benchmark/extracted_triton.py

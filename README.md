@@ -66,3 +66,7 @@ bash run.sh
 - `test_engram.py`：官方 oracle、内存映射、测试与清理。
 - `download_reference.py` / `reference-checksums.json`：可追溯的官方参考下载。
 - `run.sh`：编译与运行。
+
+## 2026-09-17：真实权重 E2E 与流水化实验
+
+新增 [当日工作总结](SUMMARY-2026-09-17.md)、[完整性能报告](benchmark/report-pipeline.html) 和 [复现步骤](benchmark/README.md)。包含两层完整真实表、CPU/NPU 分工、七条路径的 shape 对比与阶段拆分、双缓冲消融，以及 raw ACL 发射顺序问题的修正。流水版大 shape 仍落后于 Triton，具体限制见总结。
