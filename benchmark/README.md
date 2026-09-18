@@ -2,6 +2,8 @@
 
 先阅读 [当日总结](../SUMMARY-2026-09-17.md) 与 [实现说明](PIPELINE.md)。本目录为独立测试，不启动推理服务。结果仅是 token 输入到 BF16 embedding 就绪，不含后续投影、门控、卷积或整个模型。
 
+三种场景的算子职责、计算单元、启动数量和完整 Mermaid 流程图见 [根目录 README](../README.md)。其中 block、Triton program、CPU 线程配置是不同口径，不能互换。
+
 ## 复现
 
 需要 Ascend A3 / CANN 9.1.0、配套 torch_npu 2.12.0、Triton Ascend 3.2，以及 numpy、transformers。完整真实权重只读挂载到 `/model`，包含 config、tokenizer、两层 engram_embed_weight_l{1,14}.safetensors 和 engram_embed_scale_l{1,14}.safetensors。预留超过 210 GiB 主存及超过 23 GiB HBM 和中间输出空间。
