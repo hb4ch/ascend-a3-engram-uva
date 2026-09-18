@@ -1,6 +1,6 @@
-# Ascend A3 Engram：三种执行路径与 UVA 实验
+# Ascend A3 Engram：四种执行路径与 UVA 实验
 
-本仓库比较集中部署下的三种执行路径：**CPU 收集后由 NPU 反量化、CPU 收集并反量化、NPU hash 后通过 UVA 直接读主存**。下面每章对应一条完整路径。真实权重实验入口为 [`benchmark/bench_pipeline_e2e.py`](benchmark/bench_pipeline_e2e.py)，复现步骤见 [benchmark README](benchmark/README.md)。
+本仓库比较集中部署下的四种执行路径：**CPU 收集后由 NPU 反量化、CPU 收集并反量化、自写 AscendC UVA、上游 Triton kernel 经 UVA 调用适配**。下面每章对应一条完整路径。真实权重实验入口为 [`benchmark/bench_pipeline_e2e.py`](benchmark/bench_pipeline_e2e.py)，复现步骤见 [benchmark README](benchmark/README.md)。
 
 共同计时边界是：**host token IDs、mask 和前 3 个 token 的历史已经准备好，直到两层 BF16 embedding 在 HBM 中可用，并完成终点同步**。不包含权重加载、后续投影、门控、卷积、完整模型、网络服务或跨 rank 通信。CPU 路径是本仓库的 PyTorch/NumPy 参考基线，不是对上游 vllm-ascend 服务的性能测量。
 
@@ -68,9 +68,9 @@ flowchart TD
     E --> F["HBM：两层BF16 embedding<br/>最终同步后计时结束"]
 ```
 
-## 场景三：NPU hash，UVA 直接读取主存 INT8 表并反量化
+## 场景三：自写 AscendC hash 与 UVA gather / 反量化
 
-对应 **`ascendc_uva`、`triton_uva`、`pipeline_uva`、`serial_tiled_uva`、`pipeline16_uva`**。这些路径共用同一个 AscendC hash，然后选择其中一种 gather/dequant 实现。图中的 gather 分支是互斥测试方案，不会全部执行。
+对应 **`ascendc_uva`、`pipeline_uva`、`serial_tiled_uva`、`pipeline16_uva`**。这些自写路径共用同一个 AscendC hash，然后选择一种串行或流水 gather/dequant 实现。图中的分支互斥。上游 Triton UVA 单独列在场景四。
 
 ### 算子实现与单元分工
 
@@ -80,7 +80,6 @@ flowchart TD
 | [`hash_e2e.asc`](benchmark/hash_e2e.asc) | 每个任务处理一个 token、一个层；压缩映射、历史截断、整数乘法/XOR/取模，产生 24 行号 | 设备 Scalar 运算；DataCopy 写回 hash | **一次 launch 包含两层**，`min(2T,40)` 个 block；任务超过 block 数时按步长循环。核内 head 循环是标量串行，不是 SIMT |
 | [`gather.asc`](benchmark/gather.asc) | 逐行从映射 DDR 取 256 个 INT8，转换 INT8→FP16→FP32，按 8 个 scale 分段乘法，再转 BF16 写 HBM | Scalar 读取行号/scale；Vector Cast/Muls；DataCopy 搬运，较多全流水屏障 | 每层一次 launch，`min(R,40)` 个 block，按 block 步长逐行处理 |
 | [`gather_pipeline.asc`](benchmark/gather_pipeline.asc) | 按 tile 读取行号和 INT8/scale，向量广播 scale 后乘法，输出 BF16；支持相同分块的串行与流水对照 | **AIV-only**。Scalar 处理索引/循环；MTE2 将行号、DDR INT8、HBM scale 读入 UB；Vector Cast/Brcb/Mul；MTE3 将输出写回 HBM | 每层一次 launch，`min(ceil(R/tile),48)` 个 block；每个 block 两个输入队列槽、两个输出队列槽。双缓冲不增加核数，也不证明一定有效重叠 |
-| 上游提取的 Triton gather/dequant | 每个 program 从行号定位真实 DDR 行，读取 INT8 与 HBM scale，反量化后写 BF16 | Triton 设备内存访问与逐元素运算；实际 Scalar/Vector/搬运指令由编译器生成 | 每层一次 launch，grid=`(R,)`，每个 program 处理一行，`WIDTH=256`、`num_warps=4`。program 数不是物理核数，4 也不是 A3 核数 |
 | 最终同步 | 两层结果均就绪后结束计时 | Host 等待设备完成 | 每个计时样本一次 |
 
 设备 hash 的数学定义是 `rolling_n = XOR(ids[j] × multiplier[layer,j])`，再计算每个 head 的 `rolling_n % prime[layer,n,head] + offset[layer,n,head]`。乘数由 host 初始化，实际 token 对应的乘法、XOR、取模在 device 执行。64 位运算可能编译成多条指令，源码不能证明单指令吞吐。
@@ -91,13 +90,13 @@ flowchart TD
 
 当 `R < 320` 时，三个 tiled 路径都使用 **tile=1**；否则 `pipeline_uva` / `serial_tiled_uva` 使用 tile=8，`pipeline16_uva` 使用 tile=16。这是当前 benchmark 的条件选择，不是所有 shape 都固定 tile=16。
 
-| `[B,S]` | `T` | 每层 `R` | Hash block（两层合计） | 旧 gather block / 层 | 流水8及串行8 block / 层 | 流水16 block / 层 | Triton program / 层 |
-|---|---:|---:|---:|---:|---|---|---:|
-| `[1,1]` | 1 | 24 | 2 | 24 | 24，tile=1 | 24，tile=1 | 24 |
-| `[8,1]` | 8 | 192 | 16 | 40 | 48，tile=1 | 48，tile=1 | 192 |
-| `[32,1]` | 32 | 768 | 40 | 40 | 48，tile=8 | 48，tile=16 | 768 |
-| `[512,1]` | 512 | 12,288 | 40 | 40 | 48，tile=8 | 48，tile=16 | 12,288 |
-| `[8,512]` | 4,096 | 98,304 | 40 | 40 | 48，tile=8 | 48，tile=16 | 98,304 |
+| `[B,S]` | `T` | 每层 `R` | Hash block（两层合计） | 旧 gather block / 层 | 流水8及串行8 block / 层 | 流水16 block / 层 |
+|---|---:|---:|---:|---:|---|---|
+| `[1,1]` | 1 | 24 | 2 | 24 | 24，tile=1 | 24，tile=1 |
+| `[8,1]` | 8 | 192 | 16 | 40 | 48，tile=1 | 48，tile=1 |
+| `[32,1]` | 32 | 768 | 40 | 40 | 48，tile=8 | 48，tile=16 |
+| `[512,1]` | 512 | 12,288 | 40 | 40 | 48，tile=8 | 48，tile=16 |
+| `[8,512]` | 4,096 | 98,304 | 40 | 40 | 48，tile=8 | 48，tile=16 |
 
 UVA 并不消除 DDR 数据流量：两层每 token 仍需读取 `2 × 24 × 256 = 12,288` 字节 INT8，另有 HBM scale 读取与 BF16 写回。它省去的是 CPU 收集到中转缓冲再显式 H2D 的执行路径。40 与 48 的 block 上限也是旧版和流水版之间的差异，不能把所有性能改善归因于流水；同 tile、同核数的串行/流水消融才用于衡量流水收益。
 
@@ -109,17 +108,54 @@ flowchart TD
     H --> K{"本轮选择一种gather实现"}
     K --> O["旧AscendC：每层min(R,40)个block<br/>逐行读取，Vector转换与乘法"]
     K --> P["分块AscendC：每层min(ceil(R/tile),48)个block<br/>MTE2读取、Vector计算、MTE3写回<br/>串行或双缓冲流水"]
-    K --> Q["Triton：每层R个program<br/>每program一行，物理核映射由编译器决定"]
     W["映射的pinned DDR：完整INT8表"] --> O
     W --> P
-    W --> Q
     S["HBM：完整FP32 scale表"] --> O
     S --> P
-    S --> Q
     O --> Z["HBM：两层BF16 embedding<br/>两层在同一stream顺序提交<br/>最终同步后计时结束"]
     P --> Z
-    Q --> Z
 ```
+
+## 场景四：上游 vllm-ascend Triton kernel，适配 A3 UVA 调用
+
+对应结果中的 **`triton_uva`**。这是独立的实测对照，不能与自写 AscendC 流水版混在一起。准确来源是 **vllm-project/vllm-ascend** 的 `vllm_ascend/ops/triton/engram_int8.py`，固定 commit `258a5bdf65b5b026d5e1e9a46e0d6396454272a7`，不是 vLLM NVIDIA 分支的另一个 Engram kernel。
+
+### 我们适配了什么
+
+1. [`download_triton.py`](benchmark/download_triton.py) 下载固定版本并校验源文件 SHA256。[`extract.py`](benchmark/extract.py) 提取上游两个 Triton kernel，保留函数体，替换独立运行所需的 import。本地 benchmark 不拉起 vllm-ascend 服务。
+2. 用 `aclrtMallocHost` 分配完整表的 pinned DDR，装入真实 INT8 权重，通过 `aclrtHostRegisterV2` 和 `aclrtHostGetDevicePointer` 取得 NPU 可访问的映射地址。
+3. 自定义 `Pointer` 包装器提供 `dtype=torch.int8` 和 `data_ptr()`，使 Triton 调用接收该映射地址。kernel 中 `tl.load(weight_ptr + ...)` 因而读取主存 INT8 行，而不是把整表先复制到 HBM。
+4. 行号来自我们自写的 **AscendC `hash_e2e.asc`**；完整 FP32 scale 表仍放 HBM。上游这个 Triton gather kernel 本身不算 token hash。
+
+因此，这条路径是“自写设备 hash + 上游原有 Triton gather/dequant kernel + 我们的主存映射/指针调用适配”。没有重写上游 kernel 的 hash 算法，也没有在其函数体中增加手写软件流水。编译器实际是否、如何流水化，需要看编译产物或 profiler，不能由 Triton 名称推断。
+
+### 算子与资源数量
+
+| 阶段 / 实现 | 功能与单元 | 数量与启动方式 |
+|---|---|---|
+| 输入 H2D | token/mask 连同前三个历史位置进入 HBM，运行时复制路径 | 两次框架 copy，`12B(S+3)` 字节；DMA 通道数未测 |
+| `hash_e2e.asc` | NPU Scalar 完成压缩映射、边界处理、乘法、XOR、取模，输出 HBM 行号 | 一次 launch 处理两层，`min(2T,40)` 个 block，共 `2R` 个输出行号 |
+| `_engram_int8_gather_dequant_kernel` | `tl.load` 读取行号、映射 DDR INT8 和 HBM scale，转 FP32、乘 scale、转 BF16，`tl.store` 写 HBM | 每层一次 launch，共两次顺序提交。grid=`(R,)`、`WIDTH=256`、`num_warps=4`，每个 program 处理一行。物理 AIV 数、内部 Vector/MTE 调度和并发数由编译器/运行时决定，本次未测 |
+| 最终同步 | Host 等待两层 HBM 输出完成 | 每个计时样本一次 |
+
+每层 Triton program 数：`[1,1]` 为 24，`[8,1]` 为 192，`[32,1]` 为 768，`[512,1]` 为 12,288，`[8,512]` 为 98,304。这些是逻辑工作项，不是同时占用的物理核数。`num_warps=4` 也不是四个 A3 核，执行不要求 CUDA 式 SIMT。
+
+场景一使用的是同文件中另一个 `_engram_int8_dequant_kernel`，输入是已经收集到 HBM 的连续 codes 和 scales；这里使用的是 **gather 与 dequant 融合 kernel**，需要根据行号直接读取原表。两者的数据路径不同。
+
+```mermaid
+flowchart TD
+    A["Host：tokens + mask + 前3个token历史"] --> B["输入H2D：两次copy"]
+    B --> C["自写AscendC Scalar hash<br/>两层合计min(2T,40)个block"]
+    C --> H["HBM：两层各R个行号"]
+    M["初始化，计时外：完整INT8表装入pinned DDR"] --> U["HostRegisterV2 + HostGetDevicePointer<br/>Pointer包装器传递映射地址"]
+    U --> K["上游Triton gather/dequant<br/>每层R个program，每个program一行256元素<br/>num_warps=4不等于4个A3核"]
+    H --> K
+    S["HBM：完整FP32 scale表"] --> K
+    K --> O["tl.load主存INT8与HBM scale<br/>FP32乘法后转BF16，tl.store写HBM"]
+    O --> Z["两层同一stream依次执行<br/>最终同步后输出就绪，计时结束"]
+```
+
+这是此前性能报告中的独立路径。以历史同轮 P50 为例，`[8,512]` 的 Triton UVA 为 **2.351 ms**，自写 AscendC 流水16为 **9.709 ms**。这些是已有结果，本文档整理没有触发新设备测试。复现沿用 [benchmark 完整步骤](benchmark/README.md#复现)，其中 `download_triton.py` 是这条对照的必需步骤。
 
 以上为源码与启动配置审计，尚未取得逐算子的硬件 profiler 数据，因此不报告具体 Scalar/Vector/MTE 忙碌比例、实际 DMA 通道数、Triton 物理核占用或带宽利用率。复现和计时限制见 [benchmark README](benchmark/README.md) 与 [流水说明](benchmark/PIPELINE.md)。
 
@@ -127,9 +163,9 @@ flowchart TD
 
 ## 附：早期小表功能 demo
 
-ngram.asc 将 hash、稀疏测试表二分查找、DDR gather 和标量反量化放在一次 kernel 中，启动 2 × B × count 个 block。每个 block 处理一个 token、一个层，Scalar 完成 hash/二分/逐元素反量化，DataCopy 完成行读取和结果写回；不是上面的 Vector 流水算子。默认整段测试 B=2、count=8，启动 32 个 block。
+`engram.asc` 将 hash、稀疏测试表二分查找、DDR gather 和标量反量化放在一次 kernel 中，启动 2 × B × count 个 block。每个 block 处理一个 token、一个层，Scalar 完成 hash/二分/逐元素反量化，DataCopy 完成行读取和结果写回；不是上面的 Vector 流水算子。默认整段测试 B=2、count=8，启动 32 个 block。
 
-下面是根目录 `engram.asc` 的独立功能验证，不是上述完整真实权重性能测试。它使用合成小表、每行一个 scale，输出 INT8 和 FP32。不能用它的测试结果替代上述三种场景的性能结果。
+下面是根目录 `engram.asc` 的独立功能验证，不是上述完整真实权重性能测试。它使用合成小表、每行一个 scale，输出 INT8 和 FP32。不能用它的测试结果替代上述四种场景的性能结果。
 
 在 Ascend A3 上验证：Device 计算 DeepSeek-V4.1-Flash Engram hash，直接读取映射的主机 DDR int8 表，将选中行 gather 到 HBM，并使用 HBM 中的 scale 反量化。
 

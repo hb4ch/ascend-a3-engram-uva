@@ -2,7 +2,7 @@
 
 先阅读 [当日总结](../SUMMARY-2026-09-17.md) 与 [实现说明](PIPELINE.md)。本目录为独立测试，不启动推理服务。结果仅是 token 输入到 BF16 embedding 就绪，不含后续投影、门控、卷积或整个模型。
 
-三种场景的算子职责、计算单元、启动数量和完整 Mermaid 流程图见 [根目录 README](../README.md)。其中 block、Triton program、CPU 线程配置是不同口径，不能互换。
+四种场景的算子职责、计算单元、启动数量和完整 Mermaid 流程图见 [根目录 README](../README.md)。其中 block、Triton program、CPU 线程配置是不同口径，不能互换。
 
 ## 复现
 
