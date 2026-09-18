@@ -70,3 +70,9 @@ bash run.sh
 ## 2026-09-17：真实权重 E2E 与流水化实验
 
 新增 [当日工作总结](SUMMARY-2026-09-17.md)、[完整性能报告](benchmark/report-pipeline.html) 和 [复现步骤](benchmark/README.md)。包含两层完整真实表、CPU/NPU 分工、七条路径的 shape 对比与阶段拆分、双缓冲消融，以及 raw ACL 发射顺序问题的修正。流水版大 shape 仍落后于 Triton，具体限制见总结。
+
+## 更新源码后的复现
+
+根目录 `bash run.sh` 会重新编译 `engram.asc` 再执行合成小表功能验证。真实权重性能测试请使用 [benchmark 复现步骤](benchmark/README.md#复现)，先执行 `bash build.sh` 重建三个动态库，不能使用根目录小表 demo 代替。
+
+2026-09-18 的修改仅整理 AscendC 可读性及复现入口，尚未进行新的设备运行。历史结果与 provenance 保持原样，重新构建的源码及动态库身份单独记录在 `benchmark/build-manifest.json`。

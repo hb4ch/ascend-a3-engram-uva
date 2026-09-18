@@ -37,13 +37,6 @@ CPU baseline 是官方 hash 加 NumPy gather/CPU 反量化参考，不能宣称�
 
 ## 复现命令（容器内）
 
-```bash
-source /usr/local/Ascend/ascend-toolkit/set_env.sh
-cd /work/engram-real-benchmark
-bisheng -shared gather_pipeline.asc -o libgather_pipeline.so -fPIC --npu-arch=dav-2201
-TASK_QUEUE_ENABLE=1 python3 test_pipeline_fresh_stream.py
-OPENBLAS_NUM_THREADS=8 OMP_NUM_THREADS=8 TASK_QUEUE_ENABLE=1 python3 -u bench_pipeline_e2e.py
-python3 make_pipeline_report.py
-```
+以 [README 的完整步骤](README.md#复现) 为准。不要沿用旧实验工作目录 `/work/engram-real-benchmark` 中的 `.so`。从当前仓库根目录下载参考代码后，进入 `benchmark`，下载 Triton 参考并执行 `bash build.sh`，重新编译全部三个动态库，再依次运行边界检查、端到端 benchmark、报告生成。
 
-使用固定的 benchmark 容器，`/model` 是完整真实权重目录，`/work` 对应宿主 `/data/p00603624`。报告生成脚本只依赖 Python 标准库和现有 HTML 模板，可在本地执行。
+`/model` 必须指向完整真实权重目录。当前结果保留的是此前已完成的实测；2026-09-18 的格式化没有触发设备复测。报告生成只依赖 Python 标准库及现有模板，可单独在本地执行。

@@ -5,3 +5,5 @@ result.json
 *.log
 benchmark/upstream_engram_int8.py
 benchmark/extracted_triton.py
+
+benchmark/build-manifest.json
